@@ -24,6 +24,7 @@ if Class then
 	-- Using LoggingClass
 	---@class BundleLoader:Class
 	---@overload fun(configs: table, commonConfig: table):BundleLoader
+	---@diagnostic disable-next-line: assign-type-mismatch
 	BundleLoader = Class("BundleLoader")
 else
 	BundleLoader = class("BundleLoader")
@@ -39,6 +40,7 @@ function BundleLoader:__init(configs, commonConfig)
 
 	Hooks:Install("Terrain:Load", 999, self, self.OnTerrainLoad)
 	Hooks:Install("VisualTerrain:Load", 999, self, self.OnTerrainLoad)
+	Events:Subscribe('Level:RegisterEntityResources', self, self.OnLevelRegisterEntityResources)
 
 	return self
 end
@@ -93,6 +95,41 @@ function BundleLoader:OnMountSuperBundles()
 	end
 
 	self:debug("Mounted all SuperBundles.")
+end
+
+function BundleLoader:AddRegistries(p_Registries)
+	for l_Compartment, l_Names in pairs(p_Registries) do
+		for _, l_Name in ipairs(l_Names) do
+			self:debug("Adding RegistryContainer from '%s' to compartment %s.", l_Name, l_Compartment)
+			local s_SubWorldData = ResourceManager:SearchForDataContainer(l_Name)
+
+			if not s_SubWorldData then
+				self:error("Failed to find the SubWorldData for '%s'.", l_Name)
+				return
+			end
+
+			s_SubWorldData = SubWorldData(s_SubWorldData)
+
+			if not s_SubWorldData.registryContainer then
+				self:error("Failed to find the RegistryContainer to add for '%s'.", l_Name)
+				return
+			end
+
+			ResourceManager:AddRegistry(s_SubWorldData.registryContainer, l_Compartment)
+		end
+	end
+end
+
+---VEXT Shared Level:RegisterEntityResources Event
+---@param p_LevelData DataContainer|LevelData @needs to be upcasted to LevelData
+function BundleLoader:OnLevelRegisterEntityResources(p_LevelData)
+	if self.commonConfig.registries then
+		self:AddRegistries(self.commonConfig.registries)
+	end
+
+	if self.currentConfig.registries then
+		self:AddRegistries(self.currentConfig.registries)
+	end
 end
 
 ---VEXT Shared ResourceManager:LoadBundles Hook
