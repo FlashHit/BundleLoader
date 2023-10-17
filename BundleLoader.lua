@@ -152,6 +152,7 @@ end
 function BundleLoader:OnTerrainLoad(p_HookCtx, p_TerrainName)
 	if self.currentConfig.terrainAssetName == nil then
 		self:warn("No terrain asset name specified. This means every terrain will be loaded.")
+		self:warn("Loading terrain '%s'", p_TerrainName)
 		return
 	end
 
