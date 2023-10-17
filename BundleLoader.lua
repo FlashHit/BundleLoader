@@ -59,6 +59,7 @@ function BundleLoader:__init()
 	self.currentLevelGameModeConfig = {}
 	self.commonConfig = BundleLoader.GetCommonBundleConfig()
 
+	Hooks:Install('ResourceManager:LoadBundles', 999, self, self.OnLoadBundles)
 	Hooks:Install("Terrain:Load", 999, self, self.OnTerrainLoad)
 	Hooks:Install("VisualTerrain:Load", 999, self, self.OnTerrainLoad)
 	Events:Subscribe('Level:RegisterEntityResources', self, self.OnLevelRegisterEntityResources)
@@ -331,3 +332,7 @@ function BundleLoader.GetLevelAndGameModeBundleConfig()
 	local s_Success, s_BundleConfig = pcall(require, string.format("__shared/BundleConfig/Levels/%s/%s", s_LevelName, SharedUtils:GetCurrentGameMode()))
 	return s_Success and s_BundleConfig or {}
 end
+
+BundleLoader = BundleLoader()
+
+return BundleLoader
