@@ -23,20 +23,41 @@ THE SOFTWARE.
 if Class then
 	-- Using LoggingClass
 	---@class BundleLoader:Class
-	---@overload fun(configs: table, commonConfig: table):BundleLoader
+	---@overload fun():BundleLoader
 	---@diagnostic disable-next-line: assign-type-mismatch
 	BundleLoader = Class("BundleLoader")
 else
 	BundleLoader = class("BundleLoader")
-	function BundleLoader:debug(...)
-		print(...)
+	function BundleLoader:debug(message, ...)
+		message = string.format("[BundleLoader] DEBUG: " .. message, ...)
+		print(message)
+	end
+
+	function BundleLoader:error(message, ...)
+		message = string.format("[BundleLoader] ERROR: " .. message, ...)
+		error(message)
+	end
+
+	function BundleLoader:warn(message, ...)
+		message = string.format("[BundleLoader] WARNING: " .. message, ...)
+		print(message)
 	end
 end
 
-function BundleLoader:__init(configs, commonConfig)
-	self.currentConfig = {}
-	self.configs = configs
-	self.commonConfig = commonConfig
+---@enum UiBundleTypes
+UiBundleTypes = {
+	Unknown = 0,
+	Loading = 1,
+	Playing = 2,
+	PreEndOfRound = 3,
+	EndOfRound = 4
+}
+
+function BundleLoader:__init()
+	self.currentLevelConfig = {}
+	self.currentGameModeConfig = {}
+	self.currentLevelGameModeConfig = {}
+	self.commonConfig = BundleLoader.GetCommonBundleConfig()
 
 	Hooks:Install("Terrain:Load", 999, self, self.OnTerrainLoad)
 	Hooks:Install("VisualTerrain:Load", 999, self, self.OnTerrainLoad)
@@ -46,8 +67,45 @@ function BundleLoader:__init(configs, commonConfig)
 end
 
 function BundleLoader:UpdateConfig()
+	self.currentLevelConfig = BundleLoader.GetLevelBundleConfig()
+	self.currentGameModeConfig = BundleLoader.GetGameModeBundleConfig()
+	self.currentLevelGameModeConfig = BundleLoader.GetLevelAndGameModeBundleConfig()
+
 	local s_LevelName = SharedUtils:GetLevelName()
-	self.currentConfig = self.configs[s_LevelName] or {}
+	if s_LevelName and self.currentGameModeConfig.exceptionLevelList then
+		for _, l_LevelName in ipairs(self.currentGameModeConfig.exceptionLevelList) do
+			if s_LevelName:match(l_LevelName) then
+				self.currentGameModeConfig = {}
+				break
+			end
+		end
+	end
+
+	local s_GameMode = SharedUtils:GetCurrentGameMode()
+	if s_GameMode and self.currentLevelConfig.exceptionGameModeList then
+		for _, l_GameMode in ipairs(self.currentGameModeConfig.exceptionGameModeList) do
+			if s_GameMode:match(l_GameMode) then
+				self.currentLevelConfig = {}
+				break
+			end
+		end
+	end
+end
+
+function BundleLoader:GetUIBundleType(p_Bundles)
+	for _, l_Bundle in ipairs(p_Bundles) do
+		if l_Bundle:match("UiLoading") then
+			return UiBundleTypes.Loading
+		elseif l_Bundle:match("UiPlaying") then
+			return UiBundleTypes.Playing
+		elseif l_Bundle:match("UiPreEndOfRound") then
+			return UiBundleTypes.PreEndOfRound
+		elseif l_Bundle:match("UiEndOfRound") then
+			return UiBundleTypes.EndOfRound
+		end
+	end
+
+	return UiBundleTypes.Unknown
 end
 
 function BundleLoader:GetBundles(p_Bundles, p_Compartment)
@@ -62,11 +120,63 @@ function BundleLoader:GetBundles(p_Bundles, p_Compartment)
 		end
 	end
 
-	if self.currentConfig.bundles and self.currentConfig.bundles[p_Compartment] then
-		self:debug("Current Config Bundles:")
-		for l_Index, l_Bundle in ipairs(self.currentConfig.bundles[p_Compartment]) do
+	if self.currentLevelConfig.bundles and self.currentLevelConfig.bundles[p_Compartment] then
+		self:debug("Current Level Config Bundles:")
+		for l_Index, l_Bundle in ipairs(self.currentLevelConfig.bundles[p_Compartment]) do
 			self:debug("%s: %s", l_Index, l_Bundle)
 			table.insert(s_Bundles, l_Bundle)
+		end
+	end
+
+	if self.currentLevelGameModeConfig.bundles and self.currentLevelGameModeConfig.bundles[p_Compartment] then
+		self:debug("Current Level + GameMode Config Bundles:")
+		for l_Index, l_Bundle in ipairs(self.currentLevelGameModeConfig.bundles[p_Compartment]) do
+			self:debug("%s: %s", l_Index, l_Bundle)
+			table.insert(s_Bundles, l_Bundle)
+		end
+	end
+
+	if self.currentGameModeConfig.bundles and self.currentGameModeConfig.bundles[p_Compartment] then
+		self:debug("Current GameMode Config Bundles:")
+		for l_Index, l_Bundle in ipairs(self.currentGameModeConfig.bundles[p_Compartment]) do
+			self:debug("%s: %s", l_Index, l_Bundle)
+			table.insert(s_Bundles, l_Bundle)
+		end
+	end
+
+	-- Handle special client compartment
+	if p_Compartment == ResourceCompartment.ResourceCompartment_Frontend then
+		local s_Type = self:GetUIBundleType(p_Bundles)
+		if self.commonConfig.uiBundles and self.commonConfig.uiBundles[s_Type] then
+			self:debug("Common Config UI Bundles:")
+			for l_Index, l_Bundle in ipairs(self.commonConfig.uiBundles[s_Type]) do
+				self:debug("%s: %s", l_Index, l_Bundle)
+				table.insert(s_Bundles, l_Bundle)
+			end
+		end
+
+		if self.currentLevelConfig.uiBundles and self.currentLevelConfig.uiBundles[s_Type] then
+			self:debug("Current Level Config UI Bundles:")
+			for l_Index, l_Bundle in ipairs(self.currentLevelConfig.uiBundles[s_Type]) do
+				self:debug("%s: %s", l_Index, l_Bundle)
+				table.insert(s_Bundles, l_Bundle)
+			end
+		end
+
+		if self.currentLevelGameModeConfig.bundles and self.currentLevelGameModeConfig.uiBundles[s_Type] then
+			self:debug("Current Level + GameMode Config UI Bundles:")
+			for l_Index, l_Bundle in ipairs(self.currentLevelGameModeConfig.uiBundles[s_Type]) do
+				self:debug("%s: %s", l_Index, l_Bundle)
+				table.insert(s_Bundles, l_Bundle)
+			end
+		end
+
+		if self.currentGameModeConfig.bundles and self.currentGameModeConfig.uiBundles[s_Type] then
+			self:debug("Current GameMode Config UI Bundles:")
+			for l_Index, l_Bundle in ipairs(self.currentGameModeConfig.uiBundles[s_Type]) do
+				self:debug("%s: %s", l_Index, l_Bundle)
+				table.insert(s_Bundles, l_Bundle)
+			end
 		end
 	end
 
@@ -87,9 +197,23 @@ function BundleLoader:OnMountSuperBundles()
 		end
 	end
 
-	if self.currentConfig.superBundles then
-		for l_Index, l_SuperBundle in ipairs(self.currentConfig.superBundles) do
-			self:debug("Mounting SuperBundle %s: %s.", l_Index, l_SuperBundle)
+	if self.currentLevelConfig.superBundles then
+		for l_Index, l_SuperBundle in ipairs(self.currentLevelConfig.superBundles) do
+			self:debug("Mounting Level SuperBundle %s: %s.", l_Index, l_SuperBundle)
+			ResourceManager:MountSuperBundle(l_SuperBundle)
+		end
+	end
+
+	if self.currentLevelGameModeConfig.superBundles then
+		for l_Index, l_SuperBundle in ipairs(self.currentLevelGameModeConfig.superBundles) do
+			self:debug("Mounting Level + GameMode SuperBundle %s: %s.", l_Index, l_SuperBundle)
+			ResourceManager:MountSuperBundle(l_SuperBundle)
+		end
+	end
+
+	if self.currentGameModeConfig.superBundles then
+		for l_Index, l_SuperBundle in ipairs(self.currentGameModeConfig.superBundles) do
+			self:debug("Mounting GameMode SuperBundle %s: %s.", l_Index, l_SuperBundle)
 			ResourceManager:MountSuperBundle(l_SuperBundle)
 		end
 	end
@@ -127,8 +251,16 @@ function BundleLoader:OnLevelRegisterEntityResources(p_LevelData)
 		self:AddRegistries(self.commonConfig.registries)
 	end
 
-	if self.currentConfig.registries then
-		self:AddRegistries(self.currentConfig.registries)
+	if self.currentLevelConfig.registries then
+		self:AddRegistries(self.currentLevelConfig.registries)
+	end
+
+	if self.currentLevelGameModeConfig.registries then
+		self:AddRegistries(self.currentLevelGameModeConfig.registries)
+	end
+
+	if self.currentGameModeConfig.registries then
+		self:AddRegistries(self.currentGameModeConfig.registries)
 	end
 end
 
@@ -150,14 +282,52 @@ end
 ---@param p_HookCtx HookContext
 ---@param p_TerrainName string
 function BundleLoader:OnTerrainLoad(p_HookCtx, p_TerrainName)
-	if self.currentConfig.terrainAssetName == nil then
-		self:warn("No terrain asset name specified. This means every terrain will be loaded.")
-		self:warn("Loading terrain '%s'", p_TerrainName)
+	if self.currentLevelGameModeConfig.terrainAssetName then
+		if not string.find(p_TerrainName:lower(), self.currentLevelGameModeConfig.terrainAssetName:lower()) then
+			self:debug("Prevent loading terrain: " .. p_TerrainName)
+			p_HookCtx:Return()
+		end
+
 		return
 	end
 
-	if not string.find(p_TerrainName:lower(), self.currentConfig.terrainAssetName:lower()) then
-		self:debug("Preventing load of terrain: " .. p_TerrainName)
-		p_HookCtx:Return()
+	if self.currentLevelConfig.terrainAssetName then
+		if not string.find(p_TerrainName:lower(), self.currentLevelConfig.terrainAssetName:lower()) then
+			self:debug("Prevent loading terrain: " .. p_TerrainName)
+			p_HookCtx:Return()
+		end
+
+		return
 	end
+
+	self:warn("No terrain asset name specified. This means every terrain will be loaded.")
+	self:warn("Loading terrain '%s'", p_TerrainName)
+end
+
+-- NOTE: THIS BELOW EXPECTS A SPECIFIC STRUCTURE
+
+-- Include modifications that should get loaded every time.
+function BundleLoader.GetCommonBundleConfig()
+	local s_Success, s_BundleConfig = pcall(require, "__shared/BundleConfig/Common")
+	return s_Success and s_BundleConfig or {}
+end
+
+-- Include level specific modifications. Only get loaded when the level does.
+function BundleLoader.GetLevelBundleConfig()
+	local s_LevelName = SharedUtils:GetLevelName():gsub(".*/", "")
+	local s_Success, s_BundleConfig = pcall(require, string.format("__shared/BundleConfig/Levels/%s", s_LevelName))
+	return s_Success and s_BundleConfig or {}
+end
+
+-- Include gamemode specific modifications. Only get loaded when the gamemode does.
+function BundleLoader.GetGameModeBundleConfig()
+	local s_Success, s_BundleConfig = pcall(require, string.format("__shared/BundleConfig/GameModes/%s", SharedUtils:GetCurrentGameMode()))
+	return s_Success and s_BundleConfig or {}
+end
+
+-- Include level & gamemode specific modifications. Only get loaded when the level & gamemode does.
+function BundleLoader.GetLevelAndGameModeBundleConfig()
+	local s_LevelName = SharedUtils:GetLevelName():gsub(".*/", "")
+	local s_Success, s_BundleConfig = pcall(require, string.format("__shared/BundleConfig/Levels/%s/%s", s_LevelName, SharedUtils:GetCurrentGameMode()))
+	return s_Success and s_BundleConfig or {}
 end
