@@ -72,7 +72,7 @@ UiBundleTypes = {
 }
 ```
 
-### Loading Different Bundles for One Level and Multiple Game Modes
+## Loading Different Bundles for One Level and Multiple Game Modes
 
 If you want to use different bundles, which are located within the game compartment, for a single level and across multiple game modes, you need to add the following code into your mod:
 
