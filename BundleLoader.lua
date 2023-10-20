@@ -28,7 +28,11 @@ if Class then
 	BundleLoader = Class("BundleLoader")
 else
 	BundleLoader = class("BundleLoader")
+
+	if DEBUG == nil then DEBUG = false end
+
 	function BundleLoader:debug(message, ...)
+		if not DEBUG then return end
 		message = string.format("[BundleLoader] DEBUG: " .. message, ...)
 		print(message)
 	end
