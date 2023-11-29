@@ -113,40 +113,51 @@ function BundleLoader:GetUIBundleType(p_Bundles)
 	return UiBundleTypes.Unknown
 end
 
+local function _ContainsBundle(p_Bundles, p_Bundle)
+	p_Bundle = p_Bundle:lower()
+
+	for _, l_Bundle in ipairs(p_Bundles) do
+		if l_Bundle:lower() == p_Bundle then
+			return true
+		end
+	end
+
+	return false
+end
+
+function BundleLoader:AddBundles(p_Bundles, p_BundlesToAdd)
+	for l_Index, l_Bundle in ipairs(p_BundlesToAdd) do
+		if _ContainsBundle(p_Bundles, l_Bundle) then
+			self:debug("Ignoring bundle '%s'. It is already in the list.", l_Bundle)
+		else
+			self:debug("%s: %s", l_Index, l_Bundle)
+			table.insert(p_Bundles, l_Bundle)
+		end
+	end
+end
+
 function BundleLoader:GetBundles(p_Bundles, p_Compartment)
 	local s_Bundles = {}
 	self:debug("Loading compartment %s", p_Compartment)
 
 	if self.commonConfig.bundles and self.commonConfig.bundles[p_Compartment] then
 		self:debug("Common Config Bundles:")
-		for l_Index, l_Bundle in ipairs(self.commonConfig.bundles[p_Compartment]) do
-			self:debug("%s: %s", l_Index, l_Bundle)
-			table.insert(s_Bundles, l_Bundle)
-		end
+		self:AddBundles(s_Bundles, self.commonConfig.bundles[p_Compartment])
 	end
 
 	if self.currentLevelConfig.bundles and self.currentLevelConfig.bundles[p_Compartment] then
 		self:debug("Current Level Config Bundles:")
-		for l_Index, l_Bundle in ipairs(self.currentLevelConfig.bundles[p_Compartment]) do
-			self:debug("%s: %s", l_Index, l_Bundle)
-			table.insert(s_Bundles, l_Bundle)
-		end
+		self:AddBundles(s_Bundles, self.currentLevelConfig.bundles[p_Compartment])
 	end
 
 	if self.currentLevelGameModeConfig.bundles and self.currentLevelGameModeConfig.bundles[p_Compartment] then
 		self:debug("Current Level + GameMode Config Bundles:")
-		for l_Index, l_Bundle in ipairs(self.currentLevelGameModeConfig.bundles[p_Compartment]) do
-			self:debug("%s: %s", l_Index, l_Bundle)
-			table.insert(s_Bundles, l_Bundle)
-		end
+		self:AddBundles(s_Bundles, self.currentLevelGameModeConfig.bundles[p_Compartment])
 	end
 
 	if self.currentGameModeConfig.bundles and self.currentGameModeConfig.bundles[p_Compartment] then
 		self:debug("Current GameMode Config Bundles:")
-		for l_Index, l_Bundle in ipairs(self.currentGameModeConfig.bundles[p_Compartment]) do
-			self:debug("%s: %s", l_Index, l_Bundle)
-			table.insert(s_Bundles, l_Bundle)
-		end
+		self:AddBundles(s_Bundles, self.currentGameModeConfig.bundles[p_Compartment])
 	end
 
 	-- Handle special client compartment
@@ -154,42 +165,27 @@ function BundleLoader:GetBundles(p_Bundles, p_Compartment)
 		local s_Type = self:GetUIBundleType(p_Bundles)
 		if self.commonConfig.uiBundles and self.commonConfig.uiBundles[s_Type] then
 			self:debug("Common Config UI Bundles:")
-			for l_Index, l_Bundle in ipairs(self.commonConfig.uiBundles[s_Type]) do
-				self:debug("%s: %s", l_Index, l_Bundle)
-				table.insert(s_Bundles, l_Bundle)
-			end
+			self:AddBundles(s_Bundles, self.commonConfig.uiBundles[s_Type])
 		end
 
 		if self.currentLevelConfig.uiBundles and self.currentLevelConfig.uiBundles[s_Type] then
 			self:debug("Current Level Config UI Bundles:")
-			for l_Index, l_Bundle in ipairs(self.currentLevelConfig.uiBundles[s_Type]) do
-				self:debug("%s: %s", l_Index, l_Bundle)
-				table.insert(s_Bundles, l_Bundle)
-			end
+			self:AddBundles(s_Bundles, self.currentLevelConfig.uiBundles[s_Type])
 		end
 
 		if self.currentLevelGameModeConfig.bundles and self.currentLevelGameModeConfig.uiBundles[s_Type] then
 			self:debug("Current Level + GameMode Config UI Bundles:")
-			for l_Index, l_Bundle in ipairs(self.currentLevelGameModeConfig.uiBundles[s_Type]) do
-				self:debug("%s: %s", l_Index, l_Bundle)
-				table.insert(s_Bundles, l_Bundle)
-			end
+			self:AddBundles(s_Bundles, self.currentLevelGameModeConfig.uiBundles[s_Type])
 		end
 
 		if self.currentGameModeConfig.bundles and self.currentGameModeConfig.uiBundles[s_Type] then
 			self:debug("Current GameMode Config UI Bundles:")
-			for l_Index, l_Bundle in ipairs(self.currentGameModeConfig.uiBundles[s_Type]) do
-				self:debug("%s: %s", l_Index, l_Bundle)
-				table.insert(s_Bundles, l_Bundle)
-			end
+			self:AddBundles(s_Bundles, self.currentGameModeConfig.uiBundles[s_Type])
 		end
 	end
 
 	self:debug("Game Bundles:")
-	for l_Index, l_Bundle in ipairs(p_Bundles) do
-		self:debug("%s: %s", l_Index, l_Bundle)
-		table.insert(s_Bundles, l_Bundle)
-	end
+	self:AddBundles(s_Bundles, p_Bundles)
 
 	return s_Bundles
 end
