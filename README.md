@@ -5,7 +5,7 @@
 1. Add the BundleLoader submodule to your project by running the following command:
 
 ```sh
-git submodule add https://github.com/FlashHit/BundleLoader.git ./ext/submodules/BundleLoader
+git submodule add https://github.com/FlashHit/BundleLoader.git ./ext/Shared/submodules/BundleLoader
 ```
 
 2. Organize your project structure as follows to make the most of this mod:
