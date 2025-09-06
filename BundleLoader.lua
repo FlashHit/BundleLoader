@@ -88,7 +88,7 @@ function BundleLoader:UpdateConfig()
 
 	local s_GameMode = SharedUtils:GetCurrentGameMode()
 	if s_GameMode and self.currentLevelConfig.exceptionGameModeList then
-		for _, l_GameMode in ipairs(self.currentGameModeConfig.exceptionGameModeList) do
+		for _, l_GameMode in ipairs(self.currentLevelConfig.exceptionGameModeList) do
 			if s_GameMode:match(l_GameMode) then
 				self.currentLevelConfig = {}
 				break
